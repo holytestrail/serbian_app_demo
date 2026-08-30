@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Сербский: подлежащее + сказуемое</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 20px 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #faf9f6;
+    color: #1a1a1a;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .topbar { display: flex; justify-content: flex-end; gap: 14px; margin: 0 0 22px; }
+  .toggle { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; }
+  .label { font-size: 13px; color: #767468; margin: 0 0 4px; display:none; }
+  #ru-phrase { font-size: 24px; margin: 0 0 22px; line-height: 1.3; }
+  #sr-phrase { font-size: 21px; margin: 0 0 18px; min-height: 28px; }
+  #stage-label { font-size: 13px; color: #767468; margin: 0 0 10px; }
+  #grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button {
+    padding: 14px 8px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: 1px solid #d8d5c9;
+    background: #ffffff;
+    color: #1a1a1a;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active { background: #f0efe8; transform: scale(0.98); }
+  #feedback { min-height: 22px; margin: 20px 0 0; font-size: 15px; font-weight: 600; }
+  .ok { color: #227a4a; }
+  .no { color: #b3392f; }
+  hr { border: none; border-top: 1px solid #e2dfd4; margin: 18px 0 12px; }
+  #conj-reminder { font-size: 13px; color: #767468; }
+  #conj-reminder .verb-line { margin: 0 0 6px; }
+  #conj-reminder table { border-collapse: collapse; }
+  #conj-reminder td { padding: 2px 14px 2px 0; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <label class="toggle"><input type="checkbox" id="hard-toggle"> Кнопки глаголов в случайном порядке</label>
+    <label class="toggle"><input type="checkbox" id="all-verbs-toggle"> Все спряжения (не только -ati)</label>
+  </div>
+
+  <hr>
+
+  <p class="label">Русская фраза</p>
+  <p id="ru-phrase"></p>
+
+  <p class="label">Переведи на сербский</p>
+  <p id="sr-phrase"></p>
+
+  <p id="stage-label"></p>
+  <div id="grid"></div>
+
+  <p id="feedback"></p>
+
+  <hr>
+  <div id="conj-reminder"></div>
+
+<script>
+const subjects = [
+  {id:"ja_m",ru:"Я",sr:"Ja",person:1,number:"sg",gender:"m"},
+  {id:"ja_f",ru:"Я",sr:"Ja",person:1,number:"sg",gender:"f"},
+  {id:"ti_m",ru:"Ты",sr:"Ti",person:2,number:"sg",gender:"m"},
+  {id:"ti_f",ru:"Ты",sr:"Ti",person:2,number:"sg",gender:"f"},
+  {id:"on",ru:"Он",sr:"On",person:3,number:"sg",gender:"m"},
+  {id:"ona",ru:"Она",sr:"Ona",person:3,number:"sg",gender:"f"},
+  {id:"ono",ru:"Оно",sr:"Ono",person:3,number:"sg",gender:"n"},
+  {id:"decak",ru:"Мальчик",sr:"Dečak",person:3,number:"sg",gender:"m"},
+  {id:"devojka",ru:"Девочка",sr:"Devojka",person:3,number:"sg",gender:"f"},
+  {id:"dete",ru:"Ребёнок",sr:"Dete",person:3,number:"sg",gender:"n"},
+  {id:"pas",ru:"Собака",sr:"Pas",person:3,number:"sg",gender:"m"},
+  {id:"macka",ru:"Кошка",sr:"Mačka",person:3,number:"sg",gender:"f"},
+  {id:"mi_m",ru:"Мы",sr:"Mi",person:1,number:"pl",gender:"m"},
+  {id:"mi_f",ru:"Мы",sr:"Mi",person:1,number:"pl",gender:"f"},
+  {id:"vi_m",ru:"Вы",sr:"Vi",person:2,number:"pl",gender:"m"},
+  {id:"vi_f",ru:"Вы",sr:"Vi",person:2,number:"pl",gender:"f"},
+  {id:"oni",ru:"Они",sr:"Oni",person:3,number:"pl",gender:"m"},
+  {id:"one",ru:"Они",sr:"One",person:3,number:"pl",gender:"f"},
+  {id:"decaci",ru:"Мальчики",sr:"Dečaci",person:3,number:"pl",gender:"m"},
+  {id:"devojke",ru:"Девочки",sr:"Devojke",person:3,number:"pl",gender:"f"},
+  {id:"psi",ru:"Собаки",sr:"Psi",person:3,number:"pl",gender:"m"},
+  {id:"macke",ru:"Кошки",sr:"Mačke",person:3,number:"pl",gender:"f"},
+
+  {id:"mama",ru:"Мама",sr:"Mama",person:3,number:"sg",gender:"f"},
+  {id:"tata",ru:"Папа",sr:"Tata",person:3,number:"sg",gender:"m"},
+  {id:"brat",ru:"Брат",sr:"Brat",person:3,number:"sg",gender:"m"},
+  {id:"sestra",ru:"Сестра",sr:"Sestra",person:3,number:"sg",gender:"f"},
+  {id:"prijatelj",ru:"Друг",sr:"Prijatelj",person:3,number:"sg",gender:"m"},
+  {id:"prijateljica",ru:"Подруга",sr:"Prijateljica",person:3,number:"sg",gender:"f"},
+  {id:"ucitelj",ru:"Учитель",sr:"Učitelj",person:3,number:"sg",gender:"m"},
+  {id:"uciteljica",ru:"Учительница",sr:"Učiteljica",person:3,number:"sg",gender:"f"},
+  {id:"student",ru:"Студент",sr:"Student",person:3,number:"sg",gender:"m"},
+  {id:"studentkinja",ru:"Студентка",sr:"Studentkinja",person:3,number:"sg",gender:"f"},
+  {id:"lekar",ru:"Врач",sr:"Lekar",person:3,number:"sg",gender:"m"},
+  {id:"komsija",ru:"Сосед",sr:"Komšija",person:3,number:"sg",gender:"m"},
+  {id:"ptica",ru:"Птица",sr:"Ptica",person:3,number:"sg",gender:"f"},
+  {id:"riba",ru:"Рыба",sr:"Riba",person:3,number:"sg",gender:"f"},
+  {id:"konj",ru:"Конь",sr:"Konj",person:3,number:"sg",gender:"m"},
+  {id:"roditelji",ru:"Родители",sr:"Roditelji",person:3,number:"pl",gender:"m"},
+  {id:"prijatelji",ru:"Друзья",sr:"Prijatelji",person:3,number:"pl",gender:"m"},
+  {id:"sestre",ru:"Сёстры",sr:"Sestre",person:3,number:"pl",gender:"f"},
+  {id:"ptice",ru:"Птицы",sr:"Ptice",person:3,number:"pl",gender:"f"},
+  {id:"studenti",ru:"Студенты",sr:"Studenti",person:3,number:"pl",gender:"m"}
+];
+
+const conjugationRules = {
+  "ati-regular":   { cut: 2, endings: ["m","š","","mo","te","ju"],
+                      label: "-ati", display: ["-am","-aš","-a","-amo","-ate","-aju"] },
+  "iti-regular":   { cut: 3, endings: ["im","iš","i","imo","ite","e"],
+                      label: "-iti", display: ["-im","-iš","-i","-imo","-ite","-e"] },
+  "eti-regular":   { cut: 3, endings: ["im","iš","i","imo","ite","e"],
+                      label: "-eti", display: ["-im","-iš","-i","-imo","-ite","-e"] },
+  "ovati-regular": { cut: 5, endings: ["ujem","uješ","uje","ujemo","ujete","uju"],
+                      label: "-ovati", display: ["-ujem","-uješ","-uje","-ujemo","-ujete","-uju"] }
+};
+
+const verbs = [
+  // -ati
+  { inf:"čitati", type:"ati-regular", ruInf:"Читать", ru:["читаю","читаешь","читает","читаем","читаете","читают"] },
+  { inf:"igrati", type:"ati-regular", ruInf:"Играть", ru:["играю","играешь","играет","играем","играете","играют"] },
+  { inf:"znati", type:"ati-regular", ruInf:"Знать", ru:["знаю","знаешь","знает","знаем","знаете","знают"] },
+  { inf:"šetati", type:"ati-regular", ruInf:"Гулять", ru:["гуляю","гуляешь","гуляет","гуляем","гуляете","гуляют"] },
+  { inf:"pitati", type:"ati-regular", ruInf:"Спрашивать", ru:["спрашиваю","спрашиваешь","спрашивает","спрашиваем","спрашиваете","спрашивают"] },
+  { inf:"sanjati", type:"ati-regular", ruInf:"Мечтать", ru:["мечтаю","мечтаешь","мечтает","мечтаем","мечтаете","мечтают"] },
+  { inf:"obećati", type:"ati-regular", ruInf:"Обещать", ru:["обещаю","обещаешь","обещает","обещаем","обещаете","обещают"] },
+  { inf:"slušati", type:"ati-regular", ruInf:"Слушать", ru:["слушаю","слушаешь","слушает","слушаем","слушаете","слушают"] },
+  { inf:"kuvati", type:"ati-regular", ruInf:"Готовить", ru:["готовлю","готовишь","готовит","готовим","готовите","готовят"] },
+  { inf:"telefonirati", type:"ati-regular", ruInf:"Звонить", ru:["звоню","звонишь","звонит","звоним","звоните","звонят"] },
+
+  // -iti
+  { inf:"govoriti", type:"iti-regular", ruInf:"Говорить", ru:["говорю","говоришь","говорит","говорим","говорите","говорят"] },
+  { inf:"učiti", type:"iti-regular", ruInf:"Учить", ru:["учу","учишь","учит","учим","учите","учат"] },
+  { inf:"voditi", type:"iti-regular", ruInf:"Водить", ru:["вожу","водишь","водит","водим","водите","водят"] },
+  { inf:"nositi", type:"iti-regular", ruInf:"Носить", ru:["ношу","носишь","носит","носим","носите","носят"] },
+  { inf:"pušiti", type:"iti-regular", ruInf:"Курить", ru:["курю","куришь","курит","курим","курите","курят"] },
+  { inf:"moliti", type:"iti-regular", ruInf:"Просить", ru:["прошу","просишь","просит","просим","просите","просят"] },
+  { inf:"loviti", type:"iti-regular", ruInf:"Ловить", ru:["ловлю","ловишь","ловит","ловим","ловите","ловят"] },
+  { inf:"hraniti", type:"iti-regular", ruInf:"Кормить", ru:["кормлю","кормишь","кормит","кормим","кормите","кормят"] },
+
+  // -eti
+  { inf:"voleti", type:"eti-regular", ruInf:"Любить", ru:["люблю","любишь","любит","любим","любите","любят"] },
+  { inf:"umeti", type:"eti-regular", ruInf:"Уметь", ru:["умею","умеешь","умеет","умеем","умеете","умеют"] },
+  { inf:"sedeti", type:"eti-regular", ruInf:"Сидеть", ru:["сижу","сидишь","сидит","сидим","сидите","сидят"] },
+  { inf:"videti", type:"eti-regular", ruInf:"Видеть", ru:["вижу","видишь","видит","видим","видите","видят"] },
+  { inf:"razumeti", type:"eti-regular", ruInf:"Понимать", ru:["понимаю","понимаешь","понимает","понимаем","понимаете","понимают"] },
+  { inf:"želeti", type:"eti-regular", ruInf:"Хотеть", ru:["хочу","хочешь","хочет","хотим","хотите","хотят"] },
+
+  // -ovati
+  { inf:"kupovati", type:"ovati-regular", ruInf:"Покупать", ru:["покупаю","покупаешь","покупает","покупаем","покупаете","покупают"] },
+  { inf:"putovati", type:"ovati-regular", ruInf:"Путешествовать", ru:["путешествую","путешествуешь","путешествует","путешествуем","путешествуете","путешествуют"] },
+  { inf:"verovati", type:"ovati-regular", ruInf:"Верить", ru:["верю","веришь","верит","верим","верите","верят"] },
+  { inf:"kritikovati", type:"ovati-regular", ruInf:"Критиковать", ru:["критикую","критикуешь","критикует","критикуем","критикуете","критикуют"] }
+];
+
+const combos = [
+  {p:1,n:"sg"},{p:2,n:"sg"},{p:3,n:"sg"},{p:1,n:"pl"},{p:2,n:"pl"},{p:3,n:"pl"}
+];
+const easyOrder = [0,3,1,4,2,5]; // 1sg,1pl / 2sg,2pl / 3sg,3pl
+
+function comboIndex(subj){ return combos.findIndex(c=>c.p===subj.person && c.n===subj.number); }
+
+function srForm(verb, idx){
+  const rule = conjugationRules[verb.type];
+  return verb.inf.slice(0, -rule.cut) + rule.endings[idx];
+}
+
+function shuffled(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+const hardToggle = document.getElementById("hard-toggle");
+const allVerbsToggle = document.getElementById("all-verbs-toggle");
+
+function getVerbPool(){
+  return allVerbsToggle.checked ? verbs : verbs.filter(v => v.type === "ati-regular");
+}
+
+let current = {};
+let subjectFilled = "____";
+let predicateFilled = "____";
+
+function pickDistractors(correct, n){
+  const pool = subjects.filter(s=>s.sr!==correct.sr);
+  const chosen = [];
+  while(chosen.length<n && pool.length){
+    const i = Math.floor(Math.random()*pool.length);
+    const cand = pool.splice(i,1)[0];
+    if(!chosen.find(c=>c.sr===cand.sr)) chosen.push(cand);
+  }
+  return chosen;
+}
+
+function renderPhrase(){
+  document.getElementById("sr-phrase").textContent = subjectFilled + " " + predicateFilled + " .";
+}
+
+function renderReminder(verb){
+  const rule = conjugationRules[verb.type];
+  const el = document.getElementById("conj-reminder");
+  const rows = [[0,3],[1,4],[2,5]]; // 1sg/1pl, 2sg/2pl, 3sg/3pl
+  const tableRows = rows.map(pair =>
+    "<tr><td>" + rule.display[pair[0]] + "</td><td>" + rule.display[pair[1]] + "</td></tr>"
+  ).join("");
+  el.innerHTML =
+    '<p class="verb-line">' + verb.ruInf + " – " + verb.inf + " (" + rule.label + ")</p>" +
+    "<table>" + tableRows + "</table>";
+}
+
+function newRound(){
+  const pool = getVerbPool();
+  const verb = pool[Math.floor(Math.random()*pool.length)];
+  const subject = subjects[Math.floor(Math.random()*subjects.length)];
+  const idx = comboIndex(subject);
+  current = { verb, subject, idx };
+  subjectFilled = "____"; predicateFilled = "____";
+
+  document.getElementById("ru-phrase").textContent = subject.ru + " " + verb.ru[idx] + ".";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "";
+  renderPhrase();
+  renderReminder(verb);
+  showSubjectStage();
+}
+
+function showSubjectStage(){
+  document.getElementById("stage-label").textContent = "Выбери подлежащее";
+  const options = [current.subject, ...pickDistractors(current.subject, 2)];
+  const shuffledOptions = shuffled(options);
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = "1fr 1fr 1fr";
+  shuffledOptions.forEach(opt=>{
+    const btn = document.createElement("button");
+    btn.textContent = opt.sr;
+    btn.onclick = () => checkSubject(opt);
+    grid.appendChild(btn);
+  });
+}
+
+function checkSubject(opt){
+  const fb = document.getElementById("feedback");
+  if(opt.sr === current.subject.sr){
+    subjectFilled = opt.sr;
+    renderPhrase();
+    fb.textContent = "";
+    fb.className = "";
+    showPredicateStage();
+  } else {
+    fb.textContent = 'Нет, это "' + opt.ru + '"';
+    fb.className = "no";
+  }
+}
+
+function showPredicateStage(){
+  document.getElementById("stage-label").textContent = "Выбери сказуемое";
+  const order = hardToggle.checked ? shuffled(easyOrder) : easyOrder;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = "1fr 1fr";
+  order.forEach(idx=>{
+    const btn = document.createElement("button");
+    btn.textContent = srForm(current.verb, idx);
+    btn.onclick = () => checkPredicate(idx);
+    grid.appendChild(btn);
+  });
+}
+
+function checkPredicate(idx){
+  const fb = document.getElementById("feedback");
+  if(idx === current.idx){
+    predicateFilled = srForm(current.verb, idx);
+    renderPhrase();
+    fb.textContent = "Верно!";
+    fb.className = "ok";
+    setTimeout(newRound, 800);
+  } else {
+    fb.textContent = "Неправильно";
+    fb.className = "no";
+  }
+}
+
+newRound();
+</script>
+</body>
+</html>
